@@ -16,9 +16,12 @@ function App() {
 	const [suggestions, setSuggestions] = useState<User[]>([]);
 	const [showMentions, setShowMentions] = useState<boolean>(false);
 	
+	const [lastHtml, setLastHtml] = useState(null);
+	
 	const [inputSelection, setInputSelection] = useState({ start: 0, end: 0 });
 	
-	const inputRef = useRef<HTMLTextAreaElement>(null);
+	const inputRef = useRef<any>(null);
+	const text = useRef<any>(null);
 	
 	const escapeRegex = (str: string) => str.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')
 	
@@ -27,8 +30,6 @@ function App() {
 		
 		return new RegExp(`(?:^|\\s)(${trigger}([^\\s${trigger}]*))$`)
 	}
-	
-	const regExp = new RegExp('@', 'ig');
 	
 	useEffect(() => {
 		const getUsers = async () => {
@@ -55,8 +56,9 @@ function App() {
 	}, [])
 	
 	const handleInputChange = (e: any) => {
-		const value = e.target.value;
-		console.log('very val', value)
+		text.current = e.target.value;
+		
+		const value = normalizeHtml(text.current)
 		
 		let matches: User[] = [];
 		
@@ -64,6 +66,7 @@ function App() {
 			const regex = makeTriggerRegex();
 			const match = value.match(regex)
 			if (match) {
+				console.log('is match', match)
 				const newValue = match[1].replace('@', '').trim();
 				
 				matches = users.filter((user) => {
@@ -82,30 +85,71 @@ function App() {
 				setShowMentions(false)
 			}
 		}
-		
-		setTweet(value);
 	}
 	
 	const onSuggestionSelect = (value: string) => {
 		inputRef.current.focus();
-		setTweet((curVal) => curVal + value.trim());
+		
+		inputRef.current.innerHTML += `<strong style="background: cornflowerblue">${value}</strong>`;
 		
 		setMentionedUsers((curVal) => [...curVal, value])
 		setShowMentions(false);
 		
+		replaceCaret(inputRef.current)
 	}
 	
-	const handleSendTweet = () => {
-		console.log('stored users', mentionedUsers)
+	const emitChange = (originalEvent: React.SyntheticEvent<any>) => {
+		const el = inputRef.current;
+		
+		const html = el.innerHTML;
+		if (html !== lastHtml) {
+			const evt = Object.assign({}, originalEvent, {
+				target: {
+					value: html
+				}
+			})
+			
+			handleInputChange(evt);
+		}
+		
+		setLastHtml(html);
 	}
+	
+	
+	function replaceCaret(el: HTMLElement) {
+		// Place the caret at the end of the element
+		const target = document.createTextNode('');
+		el.appendChild(target);
+		// do not move caret if element was not focused
+		const isTargetFocused = document.activeElement === el;
+		if (target !== null && target.nodeValue !== null && isTargetFocused) {
+			var sel = window.getSelection();
+			if (sel !== null) {
+				var range = document.createRange();
+				range.setStart(target, target.nodeValue.length);
+				range.collapse(true);
+				sel.removeAllRanges();
+				sel.addRange(range);
+			}
+			if (el instanceof HTMLElement) el.focus();
+		}
+	}
+	
+	function normalizeHtml(str: string): string {
+		return str && str.replace(/&nbsp;|\u202F|\u00A0/g, ' ');
+	}
+	
+	useEffect(() => {
+		replaceCaret(inputRef.current);
+	}, [text.current])
 	
 	return (
 		<div className="App">
 			<header className="App-header">
 				<div className="container">
-					<ContentEditable ref={inputRef} onChange={handleInputChange} html={tweet}/>
+					<div className="tweet-input" dangerouslySetInnerHTML={{ __html: text.current }} contentEditable={true} ref={inputRef} onInput={emitChange} />
 					<div className="suggestion-container">
-						{tweet && suggestions && showMentions && suggestions.map((suggestion, i) => (
+						{text.current && suggestions && showMentions && suggestions.map((suggestion, i) => (
 							<div className="suggestion-item" onClick={() => onSuggestionSelect(suggestion.name)}>
 								<img src={suggestion.avatar}/>
 								<p>{suggestion.name}</p>
@@ -116,37 +160,6 @@ function App() {
 			</header>
 		</div>
 	);
-}
-
-const ContentEditable = ({ html, onChange, children }: any) => {
-	let lastHtml = html;
-	
-	const contentRef = useRef<HTMLDivElement>(null);
-	
-	const emitChange = (originalEvent: React.SyntheticEvent<any>) => {
-		const el = contentRef.current;
-		
-		const elHtml = el.innerHTML;
-		if (onChange && html !== lastHtml) {
-			console.log(elHtml)
-			
-			const evt = Object.assign({}, originalEvent, {
-				target: {
-					value: elHtml
-				}
-			})
-			
-			onChange(evt);
-		}
-		
-		lastHtml = elHtml
-	}
-	
-	return (
-		<div onInput={emitChange} ref={contentRef} contentEditable={true}>
-			{children}
-		</div>
-	)
 }
 
 export default App;

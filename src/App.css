@@ -28,12 +28,14 @@
   color: #61dafb;
 }
 
-textarea {
+.tweet-input {
   border-radius: 7px;
   outline: none;
   background: #232323;
   color: #fff;
+  width: 300px;
   font-size: 18px;
+  text-align: left;
   border: none;
   padding: 5px;
 }
