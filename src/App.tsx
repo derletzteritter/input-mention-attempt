@@ -1,5 +1,7 @@
 import React, { ChangeEvent, useEffect, useRef, useState } from 'react';
 import './App.css';
+import { editableInputTypes } from "@testing-library/user-event/dist/utils";
+import shadows from "@mui/material/styles/shadows";
 
 interface User {
 	id: number;
@@ -10,8 +12,11 @@ interface User {
 function App() {
 	const [tweet, setTweet] = useState<string>('');
 	const [users, setUsers] = useState<User[]>([])
+	const [mentionedUsers, setMentionedUsers] = useState<string[]>([]);
 	const [suggestions, setSuggestions] = useState<User[]>([]);
 	const [showMentions, setShowMentions] = useState<boolean>(false);
+	
+	const [inputSelection, setInputSelection] = useState({ start: 0, end: 0 });
 	
 	const inputRef = useRef<HTMLTextAreaElement>(null);
 	
@@ -35,7 +40,7 @@ function App() {
 			const formattedResponse = response.data.map((res: any) => {
 				const user = {
 					id: res.id,
-					name: `${res.first_name} ${res.last_name}`,
+					name: `${res.first_name}${res.last_name}`,
 					avatar: res.avatar
 				};
 				
@@ -49,8 +54,10 @@ function App() {
 		getUsers();
 	}, [])
 	
-	const handleInputChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
-		const value = e.currentTarget.value;
+	const handleInputChange = (e: any) => {
+		const value = e.target.value;
+		console.log('very val', value)
+		
 		let matches: User[] = [];
 		
 		if (value.length > 0) {
@@ -81,22 +88,22 @@ function App() {
 	
 	const onSuggestionSelect = (value: string) => {
 		inputRef.current.focus();
-		setTweet((curVal) => curVal + value);
+		setTweet((curVal) => curVal + value.trim());
 		
-		setShowMentions(false)
+		setMentionedUsers((curVal) => [...curVal, value])
+		setShowMentions(false);
+		
+	}
+	
+	const handleSendTweet = () => {
+		console.log('stored users', mentionedUsers)
 	}
 	
 	return (
 		<div className="App">
 			<header className="App-header">
 				<div className="container">
-					<textarea
-						ref={inputRef}
-						style={{ height: 100, width: 400 }}
-						value={tweet}
-						onChange={handleInputChange}
-						placeholder="Mention users"
-					/>
+					<ContentEditable ref={inputRef} onChange={handleInputChange} html={tweet}/>
 					<div className="suggestion-container">
 						{tweet && suggestions && showMentions && suggestions.map((suggestion, i) => (
 							<div className="suggestion-item" onClick={() => onSuggestionSelect(suggestion.name)}>
@@ -109,6 +116,37 @@ function App() {
 			</header>
 		</div>
 	);
+}
+
+const ContentEditable = ({ html, onChange, children }: any) => {
+	let lastHtml = html;
+	
+	const contentRef = useRef<HTMLDivElement>(null);
+	
+	const emitChange = (originalEvent: React.SyntheticEvent<any>) => {
+		const el = contentRef.current;
+		
+		const elHtml = el.innerHTML;
+		if (onChange && html !== lastHtml) {
+			console.log(elHtml)
+			
+			const evt = Object.assign({}, originalEvent, {
+				target: {
+					value: elHtml
+				}
+			})
+			
+			onChange(evt);
+		}
+		
+		lastHtml = elHtml
+	}
+	
+	return (
+		<div onInput={emitChange} ref={contentRef} contentEditable={true}>
+			{children}
+		</div>
+	)
 }
 
 export default App;
