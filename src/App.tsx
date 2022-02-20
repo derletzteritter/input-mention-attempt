@@ -57,7 +57,6 @@ function App() {
 	
 	const handleInputChange = (e: any) => {
 		text.current = e.target.value;
-		
 		const value = normalizeHtml(text.current)
 		
 		let matches: User[] = [];
@@ -66,7 +65,6 @@ function App() {
 			const regex = makeTriggerRegex();
 			const match = value.match(regex)
 			if (match) {
-				console.log('is match', match)
 				const newValue = match[1].replace('@', '').trim();
 				
 				matches = users.filter((user) => {
@@ -90,7 +88,7 @@ function App() {
 	const onSuggestionSelect = (value: string) => {
 		inputRef.current.focus();
 		
-		inputRef.current.innerHTML += `<strong style="background: cornflowerblue">${value}</strong>`;
+		inputRef.current.innerHTML += `<strong style="padding: 0px 3px; border-radius: 7px; background: cadetblue">${value}</strong>&nbsp;`
 		
 		setMentionedUsers((curVal) => [...curVal, value])
 		setShowMentions(false);
@@ -140,8 +138,14 @@ function App() {
 	}
 	
 	useEffect(() => {
+		if (lastHtml !== inputRef.current.innerHTML) {
+			inputRef.current.innerHTML = text.current;
+		}
+		
+		setLastHtml(text.current)
+		
 		replaceCaret(inputRef.current);
-	}, [text.current])
+	}, [lastHtml, setLastHtml])
 	
 	return (
 		<div className="App">
